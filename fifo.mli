@@ -1,0 +1,18 @@
+module type S = sig
+
+ type state = Running | Cancelled | Terminated
+
+(* Referring Affect library *)
+  type fiber = E : t -> fiber
+  and t = { fiber : fiber;
+                tid : int ; 
+                mutable state : state ;
+                }
+
+  val fork : (unit -> unit) -> t
+  val yield : unit -> unit
+  val run : (unit -> unit) -> unit
+
+end
+
+module Make () : S
