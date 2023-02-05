@@ -12,7 +12,7 @@ module type S = sig
   val fork : (unit -> unit) -> t
   val yield : unit -> unit
   val run : (unit -> unit) -> unit
-
+  val cancel : t -> unit
 end
 
 module Make () : S
