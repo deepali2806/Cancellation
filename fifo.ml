@@ -37,9 +37,9 @@ module Make () : S = struct
 (* Referring Affect library *)
   type fiber = E : t -> fiber
   and t = { fiber : fiber;
-                tid : int ; 
-                mutable state : state ;
-                }
+            tid : int ; 
+            mutable state : state ;
+          }
   type _ Effect.t += Fork  : (t * (unit -> unit)) -> unit Effect.t
   type _ Effect.t += Yield : unit Effect.t
 
@@ -102,7 +102,7 @@ module Make () : S = struct
                   end
                 else
                   begin
-                  printf "\n fiber %d got aborted\n%!" fiber.tid;
+                  printf "\n Fiber %d got aborted\n%!" fiber.tid;
                   Atomic.decr suspend_count;
                   (if(Atomic.get suspend_count = 0) then
                       Condition.signal cv);
