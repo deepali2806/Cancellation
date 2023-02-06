@@ -73,6 +73,9 @@ module Make () : S = struct
             Condition.wait cv m
           done;
           Mutex.unlock m;
+          (* Check runqueue again *)
+          if (not (Queue.is_empty run_q)) then
+              dequeue ()
         end
     in
     let rec spawn ~new_fiber:fiber f =
@@ -90,11 +93,11 @@ module Make () : S = struct
                   begin
                   (match v with
                     | Ok x -> begin
+                              enqueue (Obj.magic t) x;
                               Atomic.decr suspend_count;
                               (if(Atomic.get suspend_count = 0) then
                                 Condition.signal cv);
                               Printf.printf "\nResumer is being executed and enqueued\n%!";
-                              enqueue (Obj.magic t) x;
                               end
                     | Error ex -> enqueue (Obj.magic t) ex
                   );
