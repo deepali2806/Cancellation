@@ -1,7 +1,7 @@
  (executable
   (name fifo)
   (modules fifo)
-  (libraries unified_interface)
+  (libraries cancel_unified_interface)
   (modes byte exe)
   )  
 

@@ -5,13 +5,6 @@ open Cancel_unified_interface
 
 exception Abort
 
-let counter = Atomic.make 0
-let create_ID () = Atomic.fetch_and_add counter 1
-
-
-let suspend_count = Atomic.make 0
-let m = Mutex.create ()
-let cv = Condition.create ()
 
 module type S = sig
   type state = Running | Cancelled | Terminated
@@ -19,9 +12,10 @@ module type S = sig
 (* Referring Affect library *)
   type fiber = E : t -> fiber
   and t = { fiber : fiber;
-                tid : int ; 
-                mutable state : state ;
-                }
+            tid : int ; 
+            mutable state : state ;
+            mutable cancel_fn : exn -> unit ;
+          }
 
   val fork : (unit -> unit) -> t
   val yield : unit -> unit
@@ -31,6 +25,16 @@ end
 
 module Make () : S = struct
 
+
+let counter = Atomic.make 0
+let create_ID () = Atomic.fetch_and_add counter 1
+
+
+let suspend_count = Atomic.make 0
+let m = Mutex.create ()
+let cv = Condition.create ()
+
+
   
  type state = Running | Cancelled | Terminated
 
@@ -39,6 +43,7 @@ module Make () : S = struct
   and t = { fiber : fiber;
             tid : int ; 
             mutable state : state ;
+            mutable cancel_fn : exn -> unit ;
           }
   type _ Effect.t += Fork  : (t * (unit -> unit)) -> unit Effect.t
   type _ Effect.t += Yield : unit Effect.t
@@ -46,7 +51,7 @@ module Make () : S = struct
   type 'a record_check = {k:('a, unit) continuation; fiber: t}
 
   let make_fiber ?(state = Running) () =  
-    let rec f = {fiber = E f; tid = create_ID (); state} in f
+    let rec f = {fiber = E f; tid = create_ID (); state; cancel_fn = ignore} in f
 
   let run main =
     let run_q = Queue.create () in
@@ -67,7 +72,7 @@ module Make () : S = struct
             )
         else
         begin
-          printf "\nEverything is done; Just suspended tasks are yet to come \n%!";
+          (* printf "\nEverything is done; Just suspended tasks are yet to come \n%!"; *)
           Mutex.lock m;
           while (Atomic.get suspend_count) <> 0 do
             Condition.wait cv m
@@ -105,15 +110,21 @@ module Make () : S = struct
                   end
                 else
                   begin
+                  Sched.Resume_failure
+                  end
+              in 
+              let cancellation_function (ex:exn) = (
                   printf "\n Fiber %d got aborted\n%!" fiber.tid;
                   Atomic.decr suspend_count;
                   (if(Atomic.get suspend_count = 0) then
                       Condition.signal cv);
-                  Sched.Resume_failure
-                  end
+                  )
               in
               if f (Obj.magic resumer) then
+                begin
+                fiber.cancel_fn <- (cancellation_function);
                 dequeue ()
+                end
               else 
                 discontinue k Exit
             )
@@ -141,6 +152,6 @@ module Make () : S = struct
 
   let cancel fiber = 
     match fiber.state with
-    | Running -> fiber.state <- Cancelled
+    | Running -> fiber.state <- Cancelled; fiber.cancel_fn (Abort)
     | Cancelled | Terminated -> Printf.printf "Already cancelled/done no!"
 end

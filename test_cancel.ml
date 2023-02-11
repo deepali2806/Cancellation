@@ -8,11 +8,12 @@ open Cancel_unified_interface
 
 let m = MVar.create_empty ()
 
-module F = Fifo.Make ()
 
 let main () = 
 
-  let fifo_domain = Domain.spawn( fun () ->
+  (* let fifo_domain = Domain.spawn( fun () ->
+      let module F = Fifo.Make () in
+
      F.run (fun () ->
         let domain_no = (Domain.self () :> int) in
         let fiber1 = F.fork ( fun () ->
@@ -31,8 +32,9 @@ let main () =
         )
         in ()
      )
-  ) in
+  ) in *)
   let comp () = 
+          let module F = Fifo.Make () in
      F.run (fun () ->
         let domain_no = (Domain.self () :> int) in
         let fiber1 = F.fork ( fun () ->
@@ -48,7 +50,7 @@ let main () =
         ()
      ) in 
      comp ();
-    let _ = Domain.join fifo_domain in 
+    (* let _ = Domain.join fifo_domain in  *)
     printf "\nBoth the domains are done completed%!"
 
 let _ = main ()

@@ -5,9 +5,10 @@ module type S = sig
 (* Referring Affect library *)
   type fiber = E : t -> fiber
   and t = { fiber : fiber;
-                tid : int ; 
-                mutable state : state ;
-                }
+            tid : int ; 
+            mutable state : state ;
+            mutable cancel_fn : exn -> unit ;
+          }
 
   val fork : (unit -> unit) -> t
   val yield : unit -> unit
